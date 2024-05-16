@@ -13,6 +13,13 @@ import (
 	"github.com/rivo/tview"
 )
 
+const (
+	apiBaseURL   = "https://main.api.agoric.net:443/agoric/vstorage"
+	initialPath  = "published"
+	columnCount  = 6
+	logViewTitle = "Data"
+)
+
 type EncodedResponse struct {
 	Value string `json:"value"`
 }
@@ -28,16 +35,25 @@ type NestedResponse struct {
 }
 
 var app = tview.NewApplication()
-var columns [6]*tview.List
-var logView *tview.TextView
+var columns [columnCount]*tview.List
+var dataView *tview.TextView
 var flex *tview.Flex
 var currentColumn int
 
 func main() {
-	logView = tview.NewTextView().SetDynamicColors(true).SetWrap(true).SetChangedFunc(func() {
+	title := tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetText("VStorage Viewer").
+		SetDynamicColors(true).
+		SetChangedFunc(func() {
+			app.Draw()
+		})
+	title.SetBorder(true)
+
+	dataView = tview.NewTextView().SetDynamicColors(true).SetWrap(true).SetChangedFunc(func() {
 		app.Draw()
 	})
-	logView.SetBorder(true).SetTitle("Data")
+	dataView.SetBorder(true).SetTitle(logViewTitle)
 
 	columnFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
 	for i := range columns {
@@ -49,8 +65,9 @@ func main() {
 	}
 
 	flex = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(title, 3, 1, false).
 		AddItem(columnFlex, 0, 1, true).
-		AddItem(logView, 0, 2, false)
+		AddItem(dataView, 0, 2, false)
 
 	app.SetRoot(flex, true)
 
@@ -115,13 +132,7 @@ func initializeColumn(path string, level int) int {
 }
 
 func fetchChildren(path string) ([]string, error) {
-	var url string
-	if path == "published" {
-		url = "https://main.api.agoric.net:443/agoric/vstorage/children/published"
-	} else {
-		url = fmt.Sprintf("https://main.api.agoric.net:443/agoric/vstorage/children/%s", path)
-	}
-
+	url := fmt.Sprintf("%s/children/%s", apiBaseURL, path)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %v", err)
@@ -142,7 +153,7 @@ func fetchChildren(path string) ([]string, error) {
 }
 
 func fetchData(path string) (string, error) {
-	url := fmt.Sprintf("https://main.api.agoric.net:443/agoric/vstorage/data/%s", path)
+	url := fmt.Sprintf("%s/data/%s", apiBaseURL, path)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed to make request: %v", err)
@@ -154,14 +165,8 @@ func fetchData(path string) (string, error) {
 		return "", fmt.Errorf("failed to read response body: %v", err)
 	}
 	// Clean up the encoded JSON data
-
 	str := string(body)
 	cleanedValue := cleanJSON(str)
-	// bytesValue := []byte(cleanedValue)
-	// var encodedResponse EncodedResponse
-	//if err := json.Unmarshal(bytesValue, &encodedResponse); err != nil {
-	//		return "", fmt.Errorf("failed to unmarshal JSON: %v", err)
-	//	}
 
 	// Pretty-print the cleaned JSON
 	var prettyJSON bytes.Buffer
@@ -188,6 +193,6 @@ func cleanJSON(input string) string {
 }
 
 func logMessage(message string) {
-	logView.Clear()
-	logView.Write([]byte(message + "\n"))
+	dataView.Clear()
+	dataView.Write([]byte(message + "\n"))
 }
