@@ -55,6 +55,17 @@ func main() {
 	})
 	dataView.SetBorder(true).SetTitle(logViewTitle)
 
+	dataView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyRune:
+			if event.Rune() == 'w' {
+				app.SetFocus(columns[currentColumn])
+				return nil
+			}
+		}
+		return event
+	})
+
 	columnFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
 	for i := range columns {
 		list := tview.NewList().SetWrapAround(false)
@@ -124,6 +135,11 @@ func initializeColumn(path string, level int) int {
 				app.SetFocus(columns[currentColumn])
 			}
 			return nil
+		case tcell.KeyRune:
+			if event.Rune() == 's' {
+				app.SetFocus(dataView)
+				return nil
+			}
 		}
 		return event
 	})
