@@ -81,7 +81,7 @@ func main() {
 	helpBar := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter).
-		SetText("[::b]Tips: [::]Use [::u]←[::] and [::u]→[::] to navigate columns, [::u]s[::] to switch to data, [::u]w[::] to switch to columns, [::u]Esc[::] to exit.")
+		SetText("[::b]Tips: [::-]Use [::u]←[::-] and [::u]→[::-] to navigate columns, [::u]s[::-] to switch to data, [::u]w[::-] to switch to columns, [::u]Esc[::-] to exit.")
 
 	flex = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(title, 3, 1, false).
@@ -105,6 +105,7 @@ func clearRightColumns(level int) {
 		columns[i].Clear()
 	}
 }
+
 func initializeColumn(path string, level int) int {
 	children, err := fetchChildren(path)
 	if len(children) == 0 || err != nil {
@@ -127,7 +128,11 @@ func initializeColumn(path string, level int) int {
 		columns[level].AddItem(child, "", 0, func() {
 			if levelCopy+1 < len(columns) {
 				nextLevel := initializeColumn(childPathCopy, levelCopy+1)
-				currentColumn = levelCopy + nextLevel
+				if nextLevel == 0 {
+					currentColumn = levelCopy
+				} else {
+					currentColumn = levelCopy + nextLevel
+				}
 				app.SetFocus(columns[currentColumn])
 			}
 		})
@@ -143,7 +148,7 @@ func initializeColumn(path string, level int) int {
 			}
 			return nil
 		case tcell.KeyRight:
-			if currentColumn < len(columns)-1 {
+			if currentColumn < len(columns)-1 && columns[currentColumn+1].GetItemCount() > 0 {
 				currentColumn++
 				app.SetFocus(columns[currentColumn])
 			}
