@@ -62,6 +62,9 @@ func main() {
 				app.SetFocus(columns[currentColumn])
 				return nil
 			}
+		case tcell.KeyEscape:
+			app.Stop()
+			return nil
 		}
 		return event
 	})
@@ -75,14 +78,19 @@ func main() {
 		columnFlex.AddItem(columns[i], 0, 1, true)
 	}
 
+	helpBar := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter).
+		SetText("[::b]Tips: [::]Use [::u]←[::] and [::u]→[::] to navigate columns, [::u]s[::] to switch to data, [::u]w[::] to switch to columns, [::u]Esc[::] to exit.")
+
 	flex = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(title, 3, 1, false).
 		AddItem(columnFlex, 0, 1, true).
-		AddItem(dataView, 0, 2, false)
+		AddItem(dataView, 0, 2, false).
+		AddItem(helpBar, 1, 1, false)
 
 	app.SetRoot(flex, true)
 
-	// Initialize the first column
 	initializeColumn("published", 0)
 	currentColumn = 0
 	app.SetFocus(columns[currentColumn])
@@ -92,21 +100,26 @@ func main() {
 	}
 }
 
+func clearRightColumns(level int) {
+	for i := level; i < len(columns); i++ {
+		columns[i].Clear()
+	}
+}
 func initializeColumn(path string, level int) int {
 	children, err := fetchChildren(path)
 	if len(children) == 0 || err != nil {
 		// Fetch data from the alternative endpoint and log it
 		data, err := fetchData(path)
 		if err != nil {
-			logMessage(fmt.Sprintf("[red]Error fetching data: %v", err))
+			updateDataView(fmt.Sprintf("[red]Error fetching data: %v", err))
 		} else {
-			logMessage(fmt.Sprintf("[green]%s", data))
+			updateDataView(fmt.Sprintf("[green]%s", data))
 		}
 		app.SetFocus(columns[level-1])
 		return 0
 	}
 
-	columns[level].Clear()
+	clearRightColumns(level)
 	for _, child := range children {
 		childPath := path + "." + child
 		levelCopy := level
@@ -138,9 +151,13 @@ func initializeColumn(path string, level int) int {
 		case tcell.KeyRune:
 			if event.Rune() == 's' {
 				app.SetFocus(dataView)
-				return nil
 			}
+			return nil
+		case tcell.KeyEscape:
+			app.Stop()
+			return nil
 		}
+
 		return event
 	})
 
@@ -208,7 +225,7 @@ func cleanJSON(input string) string {
 	return replacer.Replace(replacer.Replace(input))
 }
 
-func logMessage(message string) {
+func updateDataView(message string) {
 	dataView.Clear()
 	dataView.Write([]byte(message + "\n"))
 }
